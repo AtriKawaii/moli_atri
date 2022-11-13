@@ -23,7 +23,7 @@ impl From<GroupMessageEvent> for MoliMessage {
         let sender = e.sender();
         let name = match sender {
             Member::Named(named) => named.card_name().to_string(),
-            Member::Anonymous(_) => "匿名用户".to_string()
+            Member::Anonymous(_) => "匿名用户".to_string(),
         };
         let group = e.group();
 
@@ -43,7 +43,7 @@ impl From<GroupMessageEvent> for MoliMessage {
             from: e.sender().id(),
             from_name: name,
             to: group.id(),
-            to_name: group.name().into()
+            to_name: group.name().into(),
         }
     }
 }

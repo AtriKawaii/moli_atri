@@ -1,19 +1,18 @@
-mod data;
 mod config;
+mod data;
 
-use std::error::Error;
-use std::io::Write;
-use std::sync::Arc;
-use std::time::Duration;
-use atri_plugin::event::GroupMessageEvent;
-use atri_plugin::listener::{Listener, ListenerGuard};
-use atri_plugin::message::{MessageChainBuilder, MessageValue};
-use atri_plugin::{error, info, Plugin};
-use atri_plugin::message::meta::Reply;
-use dashmap::DashSet;
-use rand::Rng;
 use crate::config::MoliConfig;
 use crate::data::{MoliMessage, MoliResponse};
+use atri_plugin::event::GroupMessageEvent;
+use atri_plugin::listener::{Listener, ListenerGuard};
+use atri_plugin::message::meta::Reply;
+use atri_plugin::message::{MessageChainBuilder, MessageValue};
+use atri_plugin::{error, info, Plugin};
+use dashmap::DashSet;
+use rand::Rng;
+use std::error::Error;
+use std::sync::Arc;
+use std::time::Duration;
 
 static MOLI_REQ_URL: &str = "https://api.mlyai.com/reply";
 
@@ -34,8 +33,7 @@ impl Plugin for MoliAtri {
     }
 
     fn enable(&mut self) {
-        let config_file = atri_plugin::env::workspace()
-            .join("config.toml");
+        let config_file = atri_plugin::env::workspace().join("config.toml");
         let conf = 'err: {
             let Ok(bytes) = std::fs::read(&config_file) else {
                 break 'err None;
@@ -50,7 +48,10 @@ impl Plugin for MoliAtri {
 
         let config = conf.unwrap_or_else(|| {
             let def = MoliConfig::default();
-            let _ = std::fs::write(&config_file, toml::to_string_pretty(&def).expect("Cannot serialize"));
+            let _ = std::fs::write(
+                &config_file,
+                toml::to_string_pretty(&def).expect("Cannot serialize"),
+            );
             def
         });
         let config = Arc::new(config);
@@ -61,16 +62,16 @@ impl Plugin for MoliAtri {
 
         let rt = self.runtime.clone();
 
-        self.listener = Some(
-            Listener::listening_on_always(move |e: GroupMessageEvent| {
+        self.listener = Some(Listener::listening_on_always(
+            move |e: GroupMessageEvent| {
                 let config = config.clone();
                 let client = client_shared.clone();
 
                 let set = set.clone();
                 let rt = rt.clone();
                 async move {
-                    let _ = rt.spawn(
-                        async move {
+                    let _ = rt
+                        .spawn(async move {
                             if set.contains(&e.sender().id()) {
                                 return;
                             }
@@ -78,8 +79,12 @@ impl Plugin for MoliAtri {
                                 let msg = e.message();
                                 for elem in msg {
                                     match elem {
-                                        MessageValue::At(at) if at.target == e.client().id() => return true,
-                                        MessageValue::Text(s) if s.contains(&config.name) => return true,
+                                        MessageValue::At(at) if at.target == e.client().id() => {
+                                            return true
+                                        }
+                                        MessageValue::Text(s) if s.contains(&config.name) => {
+                                            return true
+                                        }
                                         _ => {}
                                     }
                                 }
@@ -107,7 +112,8 @@ impl Plugin for MoliAtri {
                                     .send()
                                     .await?;
 
-                                let resp: MoliResponse = serde_json::from_slice(&resp.bytes().await?)?;
+                                let resp: MoliResponse =
+                                    serde_json::from_slice(&resp.bytes().await?)?;
 
                                 if config.do_print_results_on_console {
                                     info!("Molly: 服务器返回数据: {:?}", resp);
@@ -115,9 +121,9 @@ impl Plugin for MoliAtri {
 
                                 if resp.code != "00000" {
                                     error!(
-                        "Molly: 出现异常: code={} message={}",
-                        resp.code, resp.message
-                    );
+                                        "Molly: 出现异常: code={} message={}",
+                                        resp.code, resp.message
+                                    );
                                     return Ok(());
                                 }
 
@@ -129,10 +135,15 @@ impl Plugin for MoliAtri {
                                             msg.push_str(&dat.content);
                                         }
                                         2 => {
-                                            let img = String::from("https://files.molicloud.com/") + &dat.content;
+                                            let img = String::from("https://files.molicloud.com/")
+                                                + &dat.content;
                                             let img = client.get(img).send().await?;
 
-                                            msg.push(e.group().upload_image(img.bytes().await?.to_vec()).await?);
+                                            msg.push(
+                                                e.group()
+                                                    .upload_image(img.bytes().await?.to_vec())
+                                                    .await?,
+                                            );
                                         }
                                         _ => {}
                                     };
@@ -166,13 +177,16 @@ impl Plugin for MoliAtri {
 
                             for _ in 0..config.reply_times {
                                 e = if let Some(e) = e
-                                    .next(Duration::from_secs(10), move |e| e.sender().id() == sender)
+                                    .next(Duration::from_secs(10), move |e| {
+                                        e.sender().id() == sender
+                                    })
                                     .await
                                 {
                                     e
                                 } else {
                                     let mut msg = MessageChainBuilder::new();
-                                    let random = rand::thread_rng().gen_range(0..config.timeout_reply.len());
+                                    let random =
+                                        rand::thread_rng().gen_range(0..config.timeout_reply.len());
                                     msg.push_str(&config.timeout_reply[random]);
                                     let _ = e.group().send_message(msg.build()).await;
 
@@ -185,10 +199,10 @@ impl Plugin for MoliAtri {
                                 }
                             }
                             set.remove(&sender);
-                        }
-                    ).await;
+                        })
+                        .await;
                 }
-            })
-        )
+            },
+        ))
     }
 }
