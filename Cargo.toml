@@ -1,0 +1,28 @@
+[package]
+name = "moli_atri"
+version = "0.1.0"
+edition = "2021"
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+atri_plugin = "0.4.1"
+toml = "0"
+serde_json = "1"
+rand = "0"
+regex = "1"
+dashmap = "5"
+
+[dependencies.tokio]
+version = "1"
+features = ["rt-multi-thread"]
+
+[dependencies.reqwest]
+version = "0"
+default-features = false
+features = ["rustls-tls"]
+
+[dependencies.serde]
+version = "1"
+features = ["derive"]
