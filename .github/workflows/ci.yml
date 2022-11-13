@@ -27,8 +27,10 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install rust toolchain
-        run: rustup target add ${{ matrix.target.tool }}
+      - name: Setup rust toolchain
+        run: |
+          rustup update
+          rustup target add ${{ matrix.target.tool }}
 
       - name: Cache
         uses: Swatinem/rust-cache@v2
@@ -147,9 +149,9 @@ jobs:
     steps:
       - uses: actions/checkout@v3
 
-      - name: Install rust toolchain
+      - name: Setup rust toolchain
         run: |
-          rustup default nightly
+          rustup update
           rustup target add ${{ matrix.arch }}-linux-android
 
       - name: Install NDK
