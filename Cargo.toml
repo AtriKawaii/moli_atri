@@ -26,3 +26,8 @@ features = ["rustls-tls"]
 [dependencies.serde]
 version = "1"
 features = ["derive"]
+
+[profile.release]
+lto = true
+strip = true
+codegen-units = 1
