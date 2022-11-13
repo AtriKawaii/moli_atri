@@ -31,4 +31,4 @@ timeout_reply = [
 ]
 ```
 
-本插件需要AtriBot >= v0.3.1
+本插件需要AtriBot >= v0.4.0
