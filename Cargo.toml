@@ -7,7 +7,7 @@ edition = "2021"
 crate-type = ["cdylib"]
 
 [dependencies]
-atri_plugin = "0.4.1"
+atri_plugin = "0.5.1"
 toml = "0"
 serde_json = "1"
 rand = "0"
