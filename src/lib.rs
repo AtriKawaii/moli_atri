@@ -124,6 +124,7 @@ impl Plugin for MoliAtri {
                                     set.remove(&sender);
                                     return;
                                 } else {
+                                    set.remove(&sender);
                                     return;
                                 };
 
@@ -131,6 +132,7 @@ impl Plugin for MoliAtri {
                                     error!("Error on handle message {}", e);
                                 }
                             }
+
                             set.remove(&sender);
                         })
                         .await;
