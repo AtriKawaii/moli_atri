@@ -116,14 +116,11 @@ impl Plugin for MoliAtri {
                                     serde_json::from_slice(&resp.bytes().await?)?;
 
                                 if config.do_print_results_on_console {
-                                    info!("Molly: 服务器返回数据: {:?}", resp);
+                                    info!("服务器返回数据: {:?}", resp);
                                 }
 
                                 if resp.code != "00000" {
-                                    error!(
-                                        "Molly: 出现异常: code={} message={}",
-                                        resp.code, resp.message
-                                    );
+                                    error!("出现异常: code={} message={}", resp.code, resp.message);
                                     return Ok(());
                                 }
 
@@ -158,7 +155,7 @@ impl Plugin for MoliAtri {
                                         elements: message.into_iter().collect(),
                                     };
 
-                                    //msg;
+                                    msg.with_reply(r);
                                 }
 
                                 e.group().send_message(msg.build()).await?;
@@ -172,9 +169,10 @@ impl Plugin for MoliAtri {
                             let mut e = e;
 
                             if let Err(e) = handle_message(&client, &e, &config).await {
-                                error!("Moli: Error on handle message {}", e);
+                                error!("Error on handle message {}", e);
                             }
 
+                            let mut replied = false;
                             for _ in 0..config.reply_times {
                                 e = if let Some(e) = e
                                     .next(Duration::from_secs(10), move |e| {
@@ -182,8 +180,9 @@ impl Plugin for MoliAtri {
                                     })
                                     .await
                                 {
+                                    replied = true;
                                     e
-                                } else {
+                                } else if replied {
                                     let mut msg = MessageChainBuilder::new();
                                     let random =
                                         rand::thread_rng().gen_range(0..config.timeout_reply.len());
@@ -192,10 +191,12 @@ impl Plugin for MoliAtri {
 
                                     set.remove(&sender);
                                     return;
+                                } else {
+                                    return;
                                 };
 
                                 if let Err(e) = handle_message(&client, &e, &config).await {
-                                    error!("Moli: Error on handle message {}", e);
+                                    error!("Error on handle message {}", e);
                                 }
                             }
                             set.remove(&sender);
