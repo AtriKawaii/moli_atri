@@ -95,74 +95,6 @@ impl Plugin for MoliAtri {
                                 return;
                             }
 
-                            async fn handle_message(
-                                client: &reqwest::Client,
-                                e: &GroupMessageEvent,
-                                config: &MoliConfig,
-                            ) -> Result<(), Box<dyn Error>> {
-                                let msg = MoliMessage::from(e.clone());
-
-                                let json = serde_json::to_string(&msg)?;
-                                let resp = client
-                                    .post(MOLI_REQ_URL)
-                                    .header("Api-Key", &config.api_key)
-                                    .header("Api-Secret", &config.api_secret)
-                                    .header("Content-Type", "application/json;charset=UTF-8")
-                                    .body(json)
-                                    .send()
-                                    .await?;
-
-                                let resp: MoliResponse =
-                                    serde_json::from_slice(&resp.bytes().await?)?;
-
-                                if config.do_print_results_on_console {
-                                    info!("服务器返回数据: {:?}", resp);
-                                }
-
-                                if resp.code != "00000" {
-                                    error!("出现异常: code={} message={}", resp.code, resp.message);
-                                    return Ok(());
-                                }
-
-                                let mut msg = MessageChainBuilder::new();
-
-                                for dat in resp.data {
-                                    match dat.typed {
-                                        1 => {
-                                            msg.push_str(&dat.content);
-                                        }
-                                        2 => {
-                                            let img = String::from("https://files.molicloud.com/")
-                                                + &dat.content;
-                                            let img = client.get(img).send().await?;
-
-                                            msg.push(
-                                                e.group()
-                                                    .upload_image(img.bytes().await?.to_vec())
-                                                    .await?,
-                                            );
-                                        }
-                                        _ => {}
-                                    };
-                                }
-
-                                let message = e.message();
-                                if config.do_quote_reply {
-                                    let r = Reply {
-                                        reply_seq: message.metadata().seqs[0],
-                                        sender: e.sender().id(),
-                                        time: e.message().metadata().time,
-                                        elements: message.into_iter().collect(),
-                                    };
-
-                                    msg.with_reply(r);
-                                }
-
-                                e.group().send_message(msg.build()).await?;
-
-                                Ok(())
-                            }
-
                             let sender = e.sender().id();
                             set.insert(sender);
 
@@ -182,7 +114,7 @@ impl Plugin for MoliAtri {
                                 {
                                     replied = true;
                                     e
-                                } else if replied {
+                                } else if !replied {
                                     let mut msg = MessageChainBuilder::new();
                                     let random =
                                         rand::thread_rng().gen_range(0..config.timeout_reply.len());
@@ -206,4 +138,66 @@ impl Plugin for MoliAtri {
             },
         ))
     }
+}
+
+async fn handle_message(
+    client: &reqwest::Client,
+    e: &GroupMessageEvent,
+    config: &MoliConfig,
+) -> Result<(), Box<dyn Error>> {
+    let msg = MoliMessage::from(e.clone());
+
+    let json = serde_json::to_string(&msg)?;
+    let resp = client
+        .post(MOLI_REQ_URL)
+        .header("Api-Key", &config.api_key)
+        .header("Api-Secret", &config.api_secret)
+        .header("Content-Type", "application/json;charset=UTF-8")
+        .body(json)
+        .send()
+        .await?;
+
+    let resp: MoliResponse = serde_json::from_slice(&resp.bytes().await?)?;
+
+    if config.do_print_results_on_console {
+        info!("服务器返回数据: {:?}", resp);
+    }
+
+    if resp.code != "00000" {
+        error!("出现异常: code={} message={}", resp.code, resp.message);
+        return Ok(());
+    }
+
+    let mut msg = MessageChainBuilder::new();
+
+    for dat in resp.data {
+        match dat.typed {
+            1 => {
+                msg.push_str(&dat.content);
+            }
+            2 => {
+                let img = String::from("https://files.molicloud.com/") + &dat.content;
+                let img = client.get(img).send().await?;
+
+                msg.push(e.group().upload_image(img.bytes().await?.to_vec()).await?);
+            }
+            _ => {}
+        };
+    }
+
+    let message = e.message();
+    if config.do_quote_reply {
+        let r = Reply {
+            reply_seq: message.metadata().seqs[0],
+            sender: e.sender().id(),
+            time: e.message().metadata().time,
+            elements: message.into_iter().collect(),
+        };
+
+        msg.with_reply(r);
+    }
+
+    e.group().send_message(msg.build()).await?;
+
+    Ok(())
 }
